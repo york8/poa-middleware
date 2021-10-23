@@ -1,0 +1,34 @@
+{
+  "name": "york8/poa-middleware",
+  "description": "POA框架的中间件组件，使用PHP的Generator实现洋葱圈模型",
+  "type": "library",
+  "license": "MIT",
+  "keywords": [
+    "poa",
+    "framework",
+    "generator",
+    "middleware"
+  ],
+  "authors": [
+    {
+      "name": "York",
+      "email": "lianyupeng1988@126.com"
+    }
+  ],
+  "minimum-stability": "stable",
+  "autoload": {
+    "psr-4": {
+      "Poa\\Middleware\\": "src"
+    },
+    "files": [
+      "src/includes/functions.php"
+    ]
+  },
+  "require": {
+    "php": ">=7.4"
+  },
+  "require-dev": {
+    "psr/http-message": "~1.0",
+    "psr/log": "~1.0"
+  }
+}
