@@ -32,8 +32,8 @@ The MIT License (MIT). Please see [License File](LICENSE) for more information.
 
 [ico-license]: https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square
 
-[ico-downloads]: https://img.shields.io/packagist/dt/york8/poa.svg?style=flat-square
+[ico-downloads]: https://img.shields.io/packagist/dt/poa/middleware.svg?style=flat-square
 
-[link-packagist]: https://packagist.org/packages/york8/poa
+[link-packagist]: https://packagist.org/packages/poa/middleware
 
-[link-downloads]: https://packagist.org/packages/york8/poa
+[link-downloads]: https://packagist.org/packages/poa/middleware
