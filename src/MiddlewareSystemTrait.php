@@ -10,7 +10,7 @@ namespace Poa\Middleware;
 /**
  * 中间件系统，支持执行子中间件
  */
-abstract class AbstractMiddlewareSystem implements MiddlewareInterface
+trait MiddlewareSystemTrait
 {
     /** @var MiddlewareInterface[]|callable[] */
     protected array $beforeMiddlewares = [];
@@ -18,7 +18,7 @@ abstract class AbstractMiddlewareSystem implements MiddlewareInterface
     protected array $afterMiddlewares = [];
 
     /**
-     * 中间件系统具体的执行逻辑
+     * 执行中间件系统自己本身的关键逻辑
      * @param ContextInterface $context
      * @return void|false
      */
@@ -32,7 +32,7 @@ abstract class AbstractMiddlewareSystem implements MiddlewareInterface
      */
     public function use($middleware): self
     {
-        if (!($middleware instanceof MiddlewareInterface) || !is_callable($middleware)) {
+        if (!($middleware instanceof MiddlewareInterface) && !is_callable($middleware)) {
             throw new InvalidMiddlewareError();
         }
         if (in_array($middleware, $this->beforeMiddlewares) || $middleware === $this) return $this;
@@ -47,7 +47,7 @@ abstract class AbstractMiddlewareSystem implements MiddlewareInterface
      */
     public function before($middleware): self
     {
-        if (!($middleware instanceof MiddlewareInterface) || !is_callable($middleware)) {
+        if (!($middleware instanceof MiddlewareInterface) && !is_callable($middleware)) {
             throw new InvalidMiddlewareError();
         }
         if (in_array($middleware, $this->beforeMiddlewares) || $middleware === $this) return $this;
@@ -62,7 +62,7 @@ abstract class AbstractMiddlewareSystem implements MiddlewareInterface
      */
     public function after($middleware): self
     {
-        if (!($middleware instanceof MiddlewareInterface) || !is_callable($middleware)) {
+        if (!($middleware instanceof MiddlewareInterface) && !is_callable($middleware)) {
             throw new InvalidMiddlewareError();
         }
         if (in_array($middleware, $this->afterMiddlewares) || $middleware === $this) return $this;
@@ -101,14 +101,6 @@ abstract class AbstractMiddlewareSystem implements MiddlewareInterface
         return $this;
     }
 
-    public function run(ContextInterface $context)
-    {
-        $middlewares = $this->beforeMiddlewares;
-        $middlewares[] = [$this, 'handle'];
-        return co(...$middlewares, ...$this->afterMiddlewares)($context);
-    }
-
-    /** @inheritDoc */
     public function __invoke(ContextInterface $context)
     {
         $middlewares = $this->beforeMiddlewares;

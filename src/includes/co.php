@@ -45,47 +45,46 @@ function co(...$middlewares): Closure
         try {
             while (!empty($middlewares)) {
                 $m = array_shift($middlewares);
+                LOOP:
+                $ret = null;
                 if ($m instanceof Generator) {
                     // 生成器中间件实现了洋葱圈模型
-                    $ret = $m->current();
+                    $m->current();
                     if ($m->valid()) {
                         // 生成器中间件入栈
                         $generatorStack[] = $m;
-                        if ($ret === false) {
-                            // 生成器中间件返回 false，提前中止后续中间件执行
-                            // 不能直接 return，需要确保已经入栈的生成器执行收尾操作
-                            $isDiscontinue = true;
-                            break;
-                        }
+                        continue;
                     } else {
                         // 生成器中间件已执行完毕，不需要入栈
-                        if ($m->getReturn() === false) {
-                            // 生成器中间件返回 false，提前中止后续中间件执行
-                            // 不能直接 return，需要确保已经入栈的生成器执行收尾操作
-                            $isDiscontinue = true;
-                            break;
-                        }
+                        $ret = $m->getReturn();
                     }
                 } else if (is_callable($m)) {
-                    $r = $m(...$params);
-                    if ($r instanceof Generator) {
+                    $ret = $m(...$params);
+                    if ($ret instanceof Generator) {
                         // 如果返回的是一个Generator，则插入到当前中间件队列的头部，在下一个循环中立即执行
-                        array_unshift($middlewares, $r);
-                    } else if ($r === false) {
-                        // 这是一个普通函数调用并且显示返回了 false，结束中间件的执行
-                        // 不能直接 return，需要确保已经入栈的生成器执行收尾操作
-                        $isDiscontinue = true;
-                        break;
+                        array_unshift($middlewares, $ret);
+                        continue;
                     }
                 } else if (is_array($m) || $m instanceof Traversable) {
                     // 中间件构成的子系统，只有里面的所有逻辑执行完后才会进入下一个中间件
-                    if (co(...$m)(...$params) === false) {
-                        // 子系统返回 false 提前中止
-                        // 不能直接 return，需要确保已经入栈的生成器执行收尾操作
-                        $isDiscontinue = true;
-                        break;
-                    }
+                    $ret = co(...$m)(...$params);
                 }
+                if ($ret === false) {
+                    // 生成器中间件返回 false，提前中止后续中间件执行
+                    // 不能直接 return，需要确保已经入栈的生成器执行收尾操作
+                    $isDiscontinue = true;
+                    break;
+                } else if ($ret instanceof Generator
+                    || is_callable($ret)
+                    || $ret instanceof Traversable
+                    || (is_array($ret) && !empty($ret))
+                ) {
+                    // 返回一个生成器、或可执行对象、或可遍历对象或数组
+                    $m = $ret;
+                    unset($ret);
+                    goto LOOP;
+                }
+                unset($ret);
             }
         } catch (Throwable $throwable) {
             // 中间件执行发生异常，不能中断已入栈的生成器中间件的收尾操作
@@ -95,33 +94,33 @@ function co(...$middlewares): Closure
 
         // 确保已经入栈的生成器中间件可以完全执行完毕
 
-        while (!empty($generatorStack) > 0) {
-            /** @var Generator $g */
+        while (!empty($generatorStack)) {
+            /** @var Generator $generator */
             // 数组最末位表示栈顶，最后入栈的 Generator 需要最先执行
-            $g = array_pop($generatorStack);
-            if ($g->valid()) {
+            $generator = array_pop($generatorStack);
+            if ($generator->valid()) {
                 try {
                     if ($exception) {
                         // 将之前捕获的异常抛进去，方便异常处理器进行处理
-                        $g->throw($exception);
+                        $generator->throw($exception);
                         // 异常一旦被处理就不再继续传递给后续的中间件阶段执行
                         $exception = null;
                     } else {
-                        $g->next();
+                        $generator->next();
                     }
                     // 不要直接放回栈顶，应该是放到栈尾确保按洋葱圈模型的顺序执行
-                    array_unshift($generatorStack, $g);
+                    array_unshift($generatorStack, $generator);
                 } catch (Throwable $throwable) {
                     // 抛出异常的生成器不再重新入栈
                     $exception = $throwable;
                 }
             } else {
-                $result = $g->getReturn();
+                $result = $generator->getReturn();
                 if ($result === false && $isDiscontinue !== true) {
                     $isDiscontinue = true;
                 }
-                unset($g, $result);
-                $g = null;
+                unset($generator, $result);
+                $generator = null;
             }
         }
 

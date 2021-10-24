@@ -21,7 +21,7 @@
       "Poa\\Middleware\\": "src"
     },
     "files": [
-      "src/includes/functions.php"
+      "src/includes/co.php"
     ]
   },
   "require": {

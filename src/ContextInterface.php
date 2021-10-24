@@ -7,10 +7,12 @@
 
 namespace Poa\Middleware;
 
+use ArrayAccess;
+
 /**
  * 中间件上下文对象，用来在中间件调度过程中传递和共享数据
  */
-interface ContextInterface
+interface ContextInterface extends ArrayAccess
 {
     public function getData($name);
 
