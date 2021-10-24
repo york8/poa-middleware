@@ -15,7 +15,7 @@ POA框架的中间件组件，使用PHP的Generator实现洋葱圈模型
 ```json
 {
   "require": {
-    "york8/poa-middleware": "~0.1"
+    "poa/middleware": "~0.1"
   }
 }
 ```
