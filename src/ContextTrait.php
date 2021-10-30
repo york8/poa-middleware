@@ -7,15 +7,10 @@
 
 namespace Poa\Middleware;
 
-use Psr\Log\LoggerInterface;
-
 trait ContextTrait
 {
     /** @var array */
     protected array $datas = [];
-
-    /** @var LoggerInterface 日志处理对象 */
-    public LoggerInterface $logger;
 
     /**
      * Whether a offset exists
@@ -88,22 +83,6 @@ trait ContextTrait
     public function setDatas(array &$datas)
     {
         $this->datas = $datas + $this->datas;
-    }
-
-    /**
-     * @return LoggerInterface
-     */
-    public function getLogger(): LoggerInterface
-    {
-        return $this->logger;
-    }
-
-    /**
-     * @param LoggerInterface $logger
-     */
-    public function setLogger(LoggerInterface $logger): void
-    {
-        $this->logger = $logger;
     }
 
     public function __get($name)

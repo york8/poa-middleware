@@ -10,6 +10,7 @@ use Closure;
 use Generator;
 use Throwable;
 use Traversable;
+use TypeError;
 
 /**
  * 包装执行中间件（或 callable 对象集合）返回的一个闭包函数用于执行。
@@ -130,5 +131,68 @@ function co(...$middlewares): Closure
         }
 
         if ($isDiscontinue) return false;
+    };
+}
+
+/**
+ * 发起一个协作，协作者必须是一个可执行对象或者一个可遍历的对象，其中第一个入参将作为协作的发起者，后续的其它作为协作的参与者。
+ *
+ * 发起者作为协作的发起方，用于生产整个协作需要的数据等内容给其它参与者进行进行处理；
+ *
+ * 参与者按添加的顺序先后执行，入参为发起者每一轮迭代生产的数据等内容；参与者必须是一个可执行函数，或者是一个生成器函数；
+ * 每次参与者对数据等内容处理后返回的数据内容（不能是 null 和 布尔值）将作为入参传递给下一个参与者，
+ * 如果参与者不返回处理结果，则发起者这一轮生产的数据或上一个参与者处理后的结果传递给下一个参与者。
+ *
+ * 普通可执行函数每一轮迭代将重新执行，入参为前一个参与者返回的处理结果；
+ * 生成器函数需有<b color=red>两次的 yield</b>，第一次用来接收前一个参与者的处理结果，下一个 yield 用来返回它自己的处理结果。
+ *
+ * 参与者显示返回 <b>false</b> 表示中止当前迭代开始下一轮数据处理，此时后面的参与者在将不会执行。
+ *
+ * 该协作函数将返回一个闭包，如果发起者是一个可执行函数，那闭包的入参将作为发起者的入参，否则该入参没有任何意义。
+ *
+ * @param array|callable|Traversable $starter 协作的发起者
+ * @param callable|Generator ...$callableList 协作的参与者
+ *
+ * @return Closure
+ */
+function co2($starter, ...$callableList): Closure
+{
+    if (!($starter instanceof Traversable) && !is_callable($starter) && !is_array($starter)) {
+        throw new TypeError('The Starter MUST BE callable or Traversable, or an Array');
+    }
+    return function (...$params) use ($starter, $callableList) {
+        if (is_callable($starter)) {
+            $starter = $starter(...$params);
+            if (!($starter instanceof Traversable)) {
+                throw new TypeError('The callable Starter returns MUST be Traversable');
+            }
+        }
+        foreach ($starter as $value) {
+            $currParams = &$value; // 传递给参与者的入参
+            foreach ($callableList as &$g) {
+                if (!$g) continue;
+                if (is_callable($g)) {
+                    // 可执行对象执行运行后需要返回 生成器
+                    $r = $g($currParams);
+                    if ($r === false) {
+                        break; // 中止这一轮的迭代处理
+                    } else if (!$r instanceof Generator) {
+                        // 其它返回结果将作为下一个参与者的入参
+                        if ($r !== true && !is_null($r)) $currParams = &$r;
+                        unset($r); // 解引用
+                        continue;
+                    }
+                    $g = $r;
+                    unset($r);
+                    $g->current();                // 初始化运行生成器
+                }
+                $r = $g->send($currParams);       // 传递入参，触发执行
+                $g->next();                       // 结束当前迭代，等待下一轮数据
+                if ($r === false) break;          // 返回 false 表示中止当前迭代
+                if (!is_bool($r) && !is_null($r)) $currParams = &$r;
+                unset($r);                        // 解引用
+                if (!$g->valid()) $g = null;      // 生成器已结束运行，退出协作队列
+            }
+        }
     };
 }
